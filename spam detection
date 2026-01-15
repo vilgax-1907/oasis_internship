@@ -1,0 +1,60 @@
+import pandas as pd
+import numpy as np
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import joblib
+
+data = pd.read_csv(
+    r"C:\Users\ADMIN\Desktop\internship task\task 4\spam.csv",
+    encoding="latin-1"
+)
+
+data = data[['v1', 'v2']].copy()
+data.columns = ['label', 'message']
+data.dropna(subset=['message'], inplace=True)
+
+print("Dataset shape:", data.shape)
+print("\nDataset Preview:")
+print(data.head())
+
+data['label'] = data['label'].map({'ham': 0, 'spam': 1})
+
+print("\nLabel distribution:")
+print(data['label'].value_counts())
+
+X_train, X_test, y_train, y_test = train_test_split(
+    data['message'],
+    data['label'],
+    test_size=0.25,
+    random_state=42,
+    stratify=data['label']
+)
+
+vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+model = MultinomialNB()
+model.fit(X_train_vec, y_train)
+
+y_pred = model.predict(X_test_vec)
+
+print("\nModel Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n",
+      classification_report(y_test, y_pred, target_names=['HAM', 'SPAM']))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+joblib.dump(model, r"C:\Users\ADMIN\Desktop\internship task\task 4\spam_model.pkl")
+joblib.dump(vectorizer, r"C:\Users\ADMIN\Desktop\internship task\task 4\spam_vectorizer.pkl")
+
+def predict_email(text: str) -> str:
+    text_vec = vectorizer.transform([text])
+    prediction = model.predict(text_vec)[0]
+    return "SPAM " if prediction == 1 else "NOT SPAM "
+
+# Example test
+sample_email = "Congratulations! You have won a free iPhone. Click now!"
+print("\nTest Email Result:", predict_email(sample_email))
